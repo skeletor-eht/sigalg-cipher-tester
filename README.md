@@ -1,7 +1,6 @@
 # SSL Security Analyzer
 
-A web-based tool for analyzing SSL/TLS security configurations of domains, with a focus on SHA-256 compatibility and proxy removal eligibility.
-
+A web-based tool for analyzing SSL/TLS security configurations of domains
 ## Features
 
 - Regular security analysis of domains
