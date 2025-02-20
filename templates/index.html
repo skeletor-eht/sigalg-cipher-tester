@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSL Security Analyzer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .result-card {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .proxy-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #f8f8f8;
+        }
+        .can-remove-proxy {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+        .requirement-met {
+            color: green;
+            font-weight: bold;
+        }
+        .requirement-failed {
+            color: red;
+            font-weight: bold;
+        }
+        .security-section {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .comparison-table th, .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: #f2f2f2;
+        }
+        .negotiation-result {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        .can-negotiate {
+            background-color: #e6fffa;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+        .cannot-negotiate {
+            background-color: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
+        .proxy-status-comparison {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.negotiation-result.can-negotiate.can-remove {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.negotiation-result.can-negotiate.cannot-remove {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.proxy-row {
+    background-color: #f8fafc;
+    font-weight: 500;
+}
+
+.notes-list {
+    padding-left: 20px;
+    margin: 5px 0;
+}
+
+.notes-list li {
+    margin-bottom: 5px;
+}
+
+#negotiable-domains {
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#negotiable-domains h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #334155;
+    font-size: 0.95rem;
+}
+
+.testing-options {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8fafc;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+}
+
+.testing-options label {
+    margin-right: 15px;
+    font-size: 14px;
+}
+
+.testing-options input {
+    margin-right: 5px;
+}
+
+.status-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8fafc;
+    border-radius: 5px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+}
+
+.legend-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    margin-right: 5px;
+}
+
+.legend-green {
+    background-color: #d1fae5;
+    border: 1px solid #a7f3d0;
+}
+
+.legend-yellow {
+    background-color: #fef3c7;
+    border: 1px solid #fde68a;
+}
+
+.legend-red {
+    background-color: #fee2e2;
+    border: 1px solid #fecaca;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSL Security Analyzer</h1>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="regular-analysis">Regular Analysis</div>
+            <div class="tab" data-tab="negotiation-test">SHA-256 Negotiation Test</div>
+        </div>
+        
+        <div id="regular-analysis" class="tab-content active">
+            <form id="analyzeForm">
+                <textarea name="domains" placeholder="Enter domains separated by commas (e.g., google.com, microsoft.com, github.com)"></textarea>
+                <br>
+                <button type="submit">Analyze Security</button>
+            </form>
+            <div id="removable-domains" style="display: none; margin-top: 20px; padding: 15px; background-color: #f0f8ff; border: 1px solid #b0e0e6; border-radius: 5px;">
+                <h3 style="margin-top: 0; color: #2e8b57;">Domains That Can Be Removed From Proxy</h3>
+                <div id="removable-domains-list"></div>
+                <div style="margin-top: 10px; display: flex; justify-content: space-between;">
+                    <span id="removable-domains-count"></span>
+                    <button id="copy-domains-btn" style="background-color: #4682b4; padding: 5px 10px; font-size: 0.8em;">Copy to Clipboard</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="negotiation-test" class="tab-content">
+            <form id="negotiationForm">
+                <textarea name="domains" placeholder="Enter domains separated by commas (e.g., google.com, microsoft.com, github.com)"></textarea>
+                <br>
+                <button type="submit">Test SHA-256 Negotiation</button>
+            </form>
+            <div id="negotiable-domains" style="display: none; margin-top: 20px; padding: 15px; background-color: #f0f8ff; border: 1px solid #b0e0e6; border-radius: 5px;">
+                <h3 style="margin-top: 0; color: #2e8b57;">Domains That Can Negotiate to SHA-256</h3>
+                <div id="negotiable-domains-list"></div>
+                <div style="margin-top: 10px; display: flex; justify-content: space-between;">
+                    <span id="negotiable-domains-count"></span>
+                    <button id="copy-negotiable-btn" style="background-color: #4682b4; padding: 5px 10px; font-size: 0.8em;">Copy to Clipboard</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and content
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and its content
+                const tabId = tab.getAttribute('data-tab');
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+    
+        // Regular analysis form submit
+        document.getElementById('analyzeForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Analyzing...';
+            
+            try {
+                const formData = new FormData(e.target);
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                    return;
+                }
+
+                // Get domains that can be removed from proxy
+                const domainsToRemove = data.results
+                    .filter(result => result.success && result.ecdh?.can_remove_proxy)
+                    .map(result => result.domain);
+                
+                // Display removable domains in HTML element
+                const removableDomainsDiv = document.getElementById('removable-domains');
+                const domainsList = document.getElementById('removable-domains-list');
+                const domainsCount = document.getElementById('removable-domains-count');
+                
+                if (domainsToRemove.length > 0) {
+                    // Create domain list HTML
+                    domainsList.innerHTML = domainsToRemove
+                        .map(domain => `<div style="padding: 5px; margin: 2px 0; background-color: #e6f7ff;">${domain}</div>`)
+                        .join('');
+                    
+                    // Set count text
+                    domainsCount.textContent = `Total: ${domainsToRemove.length} domain${domainsToRemove.length > 1 ? 's' : ''} can be removed`;
+                    
+                    // Show the removable domains section
+                    removableDomainsDiv.style.display = 'block';
+                    
+                    // Handle copy to clipboard functionality
+                    document.getElementById('copy-domains-btn').onclick = () => {
+                        const domainsText = domainsToRemove.join('\n');
+                        navigator.clipboard.writeText(domainsText)
+                            .then(() => {
+                                alert('Domains copied to clipboard!');
+                            })
+                            .catch(err => {
+                                console.error('Failed to copy domains: ', err);
+                                alert('Failed to copy to clipboard. Please try again.');
+                            });
+                    };
+                } else {
+                    // Hide the removable domains section if no domains can be removed
+                    removableDomainsDiv.style.display = 'none';
+                }
+
+                resultsDiv.innerHTML = data.results.map(result => {
+                    if (!result.success) {
+                        return `
+                            <div class="result-card">
+                                <h3>${result.domain}</h3>
+                                <div class="error">Error: ${result.error}</div>
+                            </div>
+                        `;
+                    }
+
+                    const isRsa = result.certificate?.key_type === 'RSA';
+                    const isValidKeySize = isRsa ? 
+                        result.certificate?.key_size === 2048 : 
+                        result.certificate?.key_size === 256;
+                    
+                    const isValidSigAlg = result.certificate?.signature_algorithm?.includes('sha256WithRSAEncryption') ||
+                        result.certificate?.signature_algorithm?.includes('ecdsa-with-SHA256');
+
+                    const proxyStatus = result.ecdh.can_remove_proxy ? 
+                        `<div class="proxy-status can-remove-proxy">
+                            ✓ Can remove from SSL-Forward Proxy
+                         </div>` :
+                        `<div class="proxy-status">
+                            Requires SSL-Forward Proxy
+                         </div>`;
+
+                    const getStatusClass = (isValid) => isValid ? 'requirement-met' : 'requirement-failed';
+                    const getStatusSymbol = (isValid) => isValid ? '✓' : '✗';
+
+                    return `
+                        <div class="result-card">
+                            <h3>${result.domain}</h3>
+                            ${proxyStatus}
+                            
+                            <div class="security-section">
+                                <h4>TLS & Cipher Requirements</h4>
+                                <p class="${getStatusClass(result.tls_version?.includes('TLSv1.2') || result.tls_version?.includes('TLSv1.3'))}">
+                                    ${getStatusSymbol(result.tls_version?.includes('TLSv1.2') || result.tls_version?.includes('TLSv1.3'))}
+                                    TLS Version: ${result.tls_version} (Required: TLS 1.2 or 1.3)
+                                </p>
+                                <p class="${getStatusClass(result.cipher_suite?.name)}">
+                                    ${getStatusSymbol(result.cipher_suite?.name)}
+                                    Cipher Suite: ${result.cipher_suite.name}
+                                </p>
+                            </div>
+
+                            <div class="security-section">
+                                <h4>Certificate Requirements</h4>
+                                <p class="${getStatusClass(isValidKeySize)}">
+                                    ${getStatusSymbol(isValidKeySize)}
+                                    Key Type & Size: ${result.certificate.key_type} (${result.certificate.key_size} bits)
+                                    Required: ${isRsa ? '2048 bits for RSA' : '256 bits for ECDSA'}
+                                </p>
+                                <p class="${getStatusClass(isValidSigAlg)}">
+                                    ${getStatusSymbol(isValidSigAlg)}
+                                    Signature Algorithm: ${result.certificate.signature_algorithm}
+                                    Required: RSA-SHA256 or ECDSA-SHA256
+                                </p>
+                                <p class="${getStatusClass(result.certificate?.peer_signing_digest === 'sha256')}">
+                                    ${getStatusSymbol(result.certificate?.peer_signing_digest === 'sha256')}
+                                    Peer Signing Digest: ${result.certificate.peer_signing_digest}
+                                    Required: SHA256
+                                </p>
+                            </div>
+
+                            <div class="security-section">
+                                <h4>Certificate Validity</h4>
+                                <p>Valid Until: ${result.certificate.valid_until}</p>
+                                <p>Days Until Expiry: ${result.certificate.days_until_expiry}</p>
+                            </div>
+
+                            ${result.security_notes ? `
+                                <div class="security-section">
+                                    <h4>Security Notes</h4>
+                                    <ul>
+                                        ${result.security_notes.map(note => `<li class="warning">${note}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        };
+        
+        // Negotiation test form submit
+        document.getElementById('negotiationForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Testing negotiation capabilities...';
+            
+            try {
+                const formData = new FormData(e.target);
+                const response = await fetch('/test-negotiation', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                    return;
+                }
+
+                // Get domains that can negotiate to SHA-256
+                const negotiableDomains = data.results
+                    .filter(result => result.success && result.sha256_negotiation?.can_use_sha256)
+                    .map(result => result.domain);
+                
+                // Display negotiable domains in HTML element
+                const negotiableDomainsDiv = document.getElementById('negotiable-domains');
+                const domainsList = document.getElementById('negotiable-domains-list');
+                const domainsCount = document.getElementById('negotiable-domains-count');
+                
+                if (negotiableDomains.length > 0) {
+                    // Create domain list HTML
+                    domainsList.innerHTML = negotiableDomains
+                        .map(domain => `<div style="padding: 5px; margin: 2px 0; background-color: #e6f7ff;">${domain}</div>`)
+                        .join('');
+                    
+                    // Set count text
+                    domainsCount.textContent = `Total: ${negotiableDomains.length} domain${negotiableDomains.length > 1 ? 's' : ''} can negotiate to SHA-256`;
+                    
+                    // Show the negotiable domains section
+                    negotiableDomainsDiv.style.display = 'block';
+                    
+                    // Handle copy to clipboard functionality
+                    document.getElementById('copy-negotiable-btn').onclick = () => {
+                        const domainsText = negotiableDomains.join('\n');
+                        navigator.clipboard.writeText(domainsText)
+                            .then(() => {
+                                alert('Domains copied to clipboard!');
+                            })
+                            .catch(err => {
+                                console.error('Failed to copy domains: ', err);
+                                alert('Failed to copy to clipboard. Please try again.');
+                            });
+                    };
+                } else {
+                    // Hide the negotiable domains section if no domains can negotiate
+                    negotiableDomainsDiv.style.display = 'none';
+                }
+
+                resultsDiv.innerHTML = data.results.map(result => {
+                    if (!result.success) {
+                        return `
+                            <div class="result-card">
+                                <h3>${result.domain}</h3>
+                                <div class="error">Error: ${result.error}</div>
+                            </div>
+                        `;
+                    }
+
+                    const canNegotiate = result.sha256_negotiation?.can_use_sha256;
+                    const negotiationClass = canNegotiate ? 'can-negotiate' : 'cannot-negotiate';
+                    const negotiationStatus = canNegotiate ? 
+                        'Can negotiate to SHA-256' : 
+                        'Cannot negotiate to SHA-256';
+
+                    return `
+                        <div class="result-card">
+                            <h3>${result.domain}</h3>
+                            
+                            <div class="negotiation-result ${negotiationClass}">
+                                ${canNegotiate ? '✓' : '✗'} ${negotiationStatus}
+                            </div>
+                            
+                            <div class="security-section">
+                                <h4>Connection Comparison</h4>
+                                <table class="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Feature</th>
+                                            <th>Standard Connection</th>
+                                            <th>SHA-256 Restricted</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>TLS Version</td>
+                                            <td>${result.standard_connection.tls_version}</td>
+                                            <td>${canNegotiate ? result.standard_connection.tls_version : 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Cipher Suite</td>
+                                            <td>${result.standard_connection.cipher_suite}</td>
+                                            <td>${canNegotiate ? result.sha256_negotiation.negotiated_cipher : 'Failed to negotiate'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Peer Signing Digest</td>
+                                            <td>${result.standard_connection.peer_signing_digest}</td>
+                                            <td>${canNegotiate ? 'sha256' : 'N/A'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="security-section">
+                                <h4>Certificate Details</h4>
+                                <p>Key Type: ${result.certificate.key_type}</p>
+                                <p>Key Size: ${result.certificate.key_size} bits</p>
+                                <p>Signature Algorithm: ${result.certificate.signature_algorithm}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>
