@@ -20,7 +20,7 @@ A web-based tool for analyzing SSL/TLS security configurations of domains
 
 1. Clone the repository or download the source files
 ```bash
-git clone https://github.com/yourusername/ssl-security-analyzer.git
+git clone https://github.com/skeletor-eht/sigalg-cipher-tester
 cd ssl-security-analyzer
 ```
 
